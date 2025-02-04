@@ -2,7 +2,7 @@
 
 # Define project directory and repository
 PROJECT_DIR="$HOME/controller_remote_play"
-REPO_URL="https://github.com/yourusername/controller_remote_play.git"  # CHANGE TO YOUR REPO
+REPO_URL="https://github.com/jboisseau1/controller_remote_play.git"  # CHANGE TO YOUR REPO
 
 echo "🚀 Starting setup for Controller Remote Play..."
 
