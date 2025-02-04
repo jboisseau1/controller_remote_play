@@ -28,3 +28,5 @@ def controller(socket):
                 del joysticks[event.instance_id]
                 print(f"Joystick {event.instance_id} disconnected")
 
+if __name__ == "__main__":
+    controller(True)
