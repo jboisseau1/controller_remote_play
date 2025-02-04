@@ -1,8 +1,28 @@
 import pygame
+import socket
+
 
 pygame.init()
-
 clock = pygame.time.Clock()
+
+
+# Server details (CHANGE THIS to the server's actual IP)
+SERVER_IP = '192.168.1.202'  # Replace with the receiver's local IP
+PORT = 12345
+
+# Create a socket
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((SERVER_IP, PORT))
+
+while True:
+    msg = input("Enter message (type 'exit' to quit): ")
+    if msg.lower() == 'exit':
+        break
+    client_socket.sendall(msg.encode())
+
+client_socket.close()
+
+
 
 def controller(socket):
     joysticks = {}

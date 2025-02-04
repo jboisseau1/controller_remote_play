@@ -1,37 +1,23 @@
 import socket
-import struct
-import evdev
-import os
-import threading
 
-# Get host and port from environment variables
-HOST = os.getenv("CONTROLLER_HOST", "0.0.0.0")  # Default to listening on all interfaces
-PORT = int(os.getenv("CONTROLLER_PORT", 5555))
+# Server settings
+HOST = '0.0.0.0'  # Listen on all available network interfaces
+PORT = 12345       # Port number
 
-def find_controller():
-    """Find an Xbox or gamepad controller connected to the system."""
-    devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
-    print(devices)
-    for device in devices:
-        if 'Xbox' in device.name or 'Gamepad' in device.name:
-            print(f"✅ Using controller: {device.name} ({device.path})")
-            return device
-    return None
+# Create a socket
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen(1)  # Listen for incoming connections
 
-def send_controller_data(device):
-    """Read controller input and send it over UDP."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+print(f"Server listening on {HOST}:{PORT}")
 
-    with device.grab_context():  # Prevents system from using controller
-        for event in device.read_loop():
-            if event.type in [evdev.ecodes.EV_ABS, evdev.ecodes.EV_KEY]:
-                data = struct.pack("IHHI", event.sec, event.usec, event.type, event.code, event.value)
-                sock.sendto(data, (HOST, PORT))
+conn, addr = server_socket.accept()
+print(f"Connected by {addr}")
 
-if __name__ == "__main__":
-    controller = find_controller()
-    if controller:
-        print(f"🚀 Starting controller server on {HOST}:{PORT}...")
-        send_controller_data(controller)
-    else:
-        print("❌ No compatible controller found. Exiting.")
+while True:
+    data = conn.recv(1024)
+    if not data:
+        break
+    print(f"Received: {data.decode()}")
+
+conn.close()
