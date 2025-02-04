@@ -1,38 +1,30 @@
-import socket
-import struct
-import evdev
-import uinput
-import os
+import pygame
 
-# Get port from environment variable
-PORT = int(os.getenv("LISTEN_PORT", 5555))
+pygame.init()
 
-def receive_controller_data():
-    """Listen for controller data over UDP and emulate input."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", PORT))  # Listen on all available interfaces
+clock = pygame.time.Clock()
 
-    # Create virtual controller
-    device = uinput.Device([
-        uinput.BTN_A, uinput.BTN_B, uinput.BTN_X, uinput.BTN_Y,
-        uinput.BTN_TL, uinput.BTN_TR, uinput.BTN_SELECT, uinput.BTN_START,
-        uinput.ABS_X + (-32768, 32767, 0, 0),
-        uinput.ABS_Y + (-32768, 32767, 0, 0),
-        uinput.ABS_RX + (-32768, 32767, 0, 0),
-        uinput.ABS_RY + (-32768, 32767, 0, 0)
-    ])
-
-    print(f"🎮 Listening for controller data on port {PORT}...")
-
+def controller(socket):
+    joysticks = {}
     while True:
-        data, _ = sock.recvfrom(1024)
-        sec, usec, type_, code, value = struct.unpack("IHHI", data)
+        # Possible joystick events: JOYAXISMOTION, JOYBALLMOTION, JOYBUTTONDOWN,
+        # JOYBUTTONUP, JOYHATMOTION, JOYDEVICEADDED, JOYDEVICEREMOVED
+        for event in pygame.event.get():
+            if event.type == pygame.JOYBUTTONDOWN:
+                print(f"Joystick button {event.button} pressed.")
+            if event.type == pygame.JOYBUTTONUP:
+                print(f"Joystick button {event.button} released.")
+            if event.type == pygame.JOYAXISMOTION:
+                print("Joystick movement.", event.value, event.axis)
+            
+            # Handle hotplugging
+            if event.type == pygame.JOYDEVICEADDED:
+                # This event will be generated when the program starts for every
+                # joystick, filling up the list without needing to create them manually.
+                joy = pygame.joystick.Joystick(event.device_index)
+                joysticks[joy.get_instance_id()] = joy
+                print(f"Joystick {joy.get_instance_id()} connencted")
+            if event.type == pygame.JOYDEVICEREMOVED:
+                del joysticks[event.instance_id]
+                print(f"Joystick {event.instance_id} disconnected")
 
-        if type_ == evdev.ecodes.EV_KEY:
-            device.emit(code, value)
-        elif type_ == evdev.ecodes.EV_ABS:
-            device.emit(code, value, syn=True)
-
-if __name__ == "__main__":
-    print("🚀 Starting virtual controller client...")
-    receive_controller_data()

@@ -11,6 +11,7 @@ PORT = int(os.getenv("CONTROLLER_PORT", 5555))
 def find_controller():
     """Find an Xbox or gamepad controller connected to the system."""
     devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    print(devices)
     for device in devices:
         if 'Xbox' in device.name or 'Gamepad' in device.name:
             print(f"✅ Using controller: {device.name} ({device.path})")
