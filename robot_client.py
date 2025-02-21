@@ -7,6 +7,8 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from aiortc.contrib.media import MediaBlackhole, MediaRecorder, MediaPlayer
 from aiortc.contrib.signaling import BYE
 
+from av import VideoFrame
+
 class CameraStreamTrack(VideoStreamTrack):
     """
     A video track that captures frames from OpenCV and yields them to WebRTC.
@@ -14,24 +16,29 @@ class CameraStreamTrack(VideoStreamTrack):
     def __init__(self, camera_index=0):
         super().__init__()
         self.cap = cv2.VideoCapture(camera_index)
-
+        # Optionally set resolution and frame rate:
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+    
     async def recv(self):
-        # Grab an OpenCV frame
-        # If your robot uses something like a PiCamera, you'll adapt this code
+        """
+        Grab a frame from the camera, convert it to an AV VideoFrame, and return it.
+        """
+        pts, time_base = await self.next_timestamp()
         ret, frame = self.cap.read()
         if not ret:
-            # If no frame, send a blank frame or raise an exception
-            await asyncio.sleep(0.1)
-            return None
+            raise Exception("Failed to read frame from camera")
+        # OpenCV uses BGR; convert to RGB:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
+        video_frame.pts = pts
+        video_frame.time_base = time_base
+        return video_frame
 
-        # Convert frame to RGB (aiortc expects frames in a consistent format)
-        # If needed, import VideoFrame from av, then wrap the numpy array
-        from av import VideoFrame
-        frame_av = VideoFrame.from_ndarray(frame, format="bgr24")
-        frame_av.pts = None
-    
-        await asyncio.sleep(1 / 30)  # Simulate ~30fps
-        return frame_av
+    def release(self):
+        if self.cap is not None:
+            self.cap.release()
 
 async def robot_main(robot_id="robot_123", camera_idx=0):
     # Step 1: connect to the signaling server
