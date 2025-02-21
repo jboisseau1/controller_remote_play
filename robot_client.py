@@ -7,32 +7,55 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from aiortc.contrib.media import MediaBlackhole, MediaRecorder, MediaPlayer
 from aiortc.contrib.signaling import BYE
 
-class CameraStreamTrack(VideoStreamTrack):
+from av import VideoFrame
+
+class PiCameraTrack(VideoStreamTrack):
     """
-    A video track that captures frames from OpenCV and yields them to WebRTC.
+    A custom VideoStreamTrack that captures frames from the Raspberry Pi camera
+    using the picamera library.
     """
-    def __init__(self, camera_index=0):
+    def __init__(self):
         super().__init__()
-        self.cap = cv2.VideoCapture(camera_index)
+        # Importing here to ensure it's only used on Raspberry Pi
+        import picamera
+        import picamera.array
+        self.camera = picamera.PiCamera()
+        # Set resolution and frame rate as desired
+        self.camera.resolution = (640, 480)
+        self.camera.framerate = 30
+        # Create an array stream for image capture
+        self.raw_capture = picamera.array.PiRGBArray(self.camera, size=(640, 480))
+        # Allow the camera to warm up
+        time.sleep(2)
 
     async def recv(self):
-        # Grab an OpenCV frame
-        # If your robot uses something like a PiCamera, you'll adapt this code
-        ret, frame = self.cap.read()
-        if not ret:
-            # If no frame, send a blank frame or raise an exception
-            await asyncio.sleep(0.1)
-            return None
+        """
+        Capture a frame from the camera and return it as an AV VideoFrame.
+        The blocking capture call is offloaded to a thread to avoid blocking the event loop.
+        """
+        # Get the next timestamp for the frame.
+        pts, time_base = await self.next_timestamp()
 
-        # Convert frame to RGB (aiortc expects frames in a consistent format)
-        # If needed, import VideoFrame from av, then wrap the numpy array
-        from av import VideoFrame
-        frame_av = VideoFrame.from_ndarray(frame, format="bgr24")
-        frame_av.pts = None
-    
+        # Offload the blocking capture call to the default executor.
+        loop = asyncio.get_running_loop()
+        frame = await loop.run_in_executor(None, self.capture_frame)
 
-        await asyncio.sleep(1 / 30)  # Simulate ~30fps
-        return frame_av
+        # Create a VideoFrame from the captured numpy array.
+        video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
+        video_frame.pts = pts
+        video_frame.time_base = time_base
+        return video_frame
+
+    def capture_frame(self):
+        """
+        Blocking call to capture a single frame using picamera.
+        """
+        self.camera.capture(self.raw_capture, format="rgb", use_video_port=True)
+        image = self.raw_capture.array
+        # Clear the stream for the next frame.
+        self.raw_capture.truncate(0)
+        return image
+
 
 async def robot_main(robot_id="robot_123", camera_idx=0):
     # Step 1: connect to the signaling server
@@ -53,11 +76,12 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
         pc = RTCPeerConnection()
 
         # Create a local track from the camera
-        options={"framerate": "30", "video_size": "640x480"}
+        # options={"framerate": "30", "video_size": "640x480"}
         # player = MediaPlayer("0:none", format="avfoundation", options=options) # MacOS camera feed
-        player = MediaPlayer("/dev/video0", format="v4l2", options=options) # Pi Cam feed
-
-        pc.addTrack(player.video)
+        # pc.addTrack(player.video)
+        # player = MediaPlayer("/dev/video0", format="v4l2", options=options) # Pi Cam feed
+        video_track = PiCameraTrack()
+        pc.addTrack(video_track)
 
         # Create a DataChannel for receiving commands
         @pc.on("datachannel")
