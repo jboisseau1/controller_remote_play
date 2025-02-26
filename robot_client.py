@@ -80,18 +80,22 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
         @pc.on("datachannel")
         def on_datachannel(channel):
             print("Data channel created by remote peer:", channel.label)
-            print(channel)
             @channel.on("message")
             def on_message(message):
                 try:
-                    print(msg)
                     data = json.loads(msg)
+                    if data.get("type") == "ice_candidate":
+                        # This shouldn't happen if you're doing it right, so ignore or log a warning
+                        print("Ignoring ICE candidate message on data channel:", data)
+                        return
+
+                    
+                    print("Controller state:", data)
                 except Exception as e:
                     print('Error', e)
                 # data["axes"] => array of floats
                 # data["buttons"] => array of { pressed: bool, value: float }
                 # do something with these to control motors
-                print("Controller state:", data)
 
 
         @pc.on("icecandidate")
