@@ -41,6 +41,9 @@ class CameraStreamTrack(VideoStreamTrack):
         video_frame = av.VideoFrame.from_ndarray(frame, format="rgb24")
         video_frame.pts = pts
         video_frame.time_base = time_base
+
+        await asyncio.sleep(1 / 15)
+
         return video_frame
 
     def stop(self):
