@@ -80,10 +80,13 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
         @pc.on("datachannel")
         def on_datachannel(channel):
             print("Data channel created by remote peer:", channel.label)
-
+            print(channel)
             @channel.on("message")
             def on_message(message):
-                data = json.loads(msg)
+                try:
+                    data = json.loads(msg)
+                except Exception as e:
+                    print('Error', e)
                 # data["axes"] => array of floats
                 # data["buttons"] => array of { pressed: bool, value: float }
                 # do something with these to control motors
@@ -150,11 +153,11 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
                 print("Unknown message:", msg)
 
 async def main():
-    try:
         await robot_main()
-    except Exception as e:
-        print("Error:", e)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print("Error:", e)
