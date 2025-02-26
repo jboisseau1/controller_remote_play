@@ -21,7 +21,7 @@ class CameraStreamTrack(VideoStreamTrack):
         self.picam2 = Picamera2()
         # Create a video configuration.
         video_config = self.picam2.create_video_configuration(
-            main={"format": "RGB888"}
+            main={"format": "RGB888", "size": (1280, 720)}
         )
         self.picam2.configure(video_config)
         self.picam2.start()
