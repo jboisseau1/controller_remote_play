@@ -83,16 +83,10 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
             @channel.on("message")
             def on_message(message):
                 try:
-                    if data.get("type") == "ice_candidate":
-                        # This shouldn't happen if you're doing it right, so ignore or log a warning
-                        print("Ignoring ICE candidate message on data channel:", data)
-                        return
-
-                    
-                    data = json.loads(msg)
+                    data = json.loads(message)
                     print("Controller state:", data)
                 except Exception as e:
-                    print('Error with data: ', e, msg)
+                    print('Error with data: ', e, message)
 
                 # data["axes"] => array of floats
                 # data["buttons"] => array of { pressed: bool, value: float }
