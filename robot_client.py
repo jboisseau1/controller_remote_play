@@ -32,6 +32,9 @@ class CameraStreamTrack(VideoStreamTrack):
 
         # Capture a frame as a numpy array (in RGB format as configured).
         frame = self.picam2.capture_array()
+        cv2.imwrite("test_frame.jpg", frame)
+        print("Saved frame to test_frame.jpg")
+        self.saved_frame = True
 
         # Optional: Process the frame with OpenCV (e.g., flipping, drawing, etc.)
         # For example, to flip the frame horizontally:
