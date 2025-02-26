@@ -28,24 +28,23 @@ class CameraStreamTrack(VideoStreamTrack):
 
     async def recv(self):
         # Get the next available timestamp for this frame.
-        pts, time_base = await self.next_timestamp()
+        try:
+            pts, time_base = await self.next_timestamp()
 
         # Capture a frame as a numpy array (in RGB format as configured).
-        frame = self.picam2.capture_array()
-        cv2.imwrite("test_frame.jpg", frame)
-        print("Saved frame to test_frame.jpg")
-        self.saved_frame = True
+            frame = self.picam2.capture_array()
 
         # Optional: Process the frame with OpenCV (e.g., flipping, drawing, etc.)
         # For example, to flip the frame horizontally:
         # frame = cv2.flip(frame, 1)
 
         # Wrap the numpy array into an AV VideoFrame.
-        video_frame = av.VideoFrame.from_ndarray(frame, format="rgb24")
-        video_frame.pts = pts
-        video_frame.time_base = time_base
-
-        await asyncio.sleep(1 / 15)
+            video_frame = av.VideoFrame.from_ndarray(frame, format="rgb24")
+            video_frame.pts = pts
+            video_frame.time_base = time_base    
+            print("Successfully set time_base to None")
+        except Exception as e:
+            print("Error setting time_base:", e)
 
         return video_frame
 
