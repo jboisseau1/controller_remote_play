@@ -92,7 +92,8 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
                     
                     print("Controller state:", data)
                 except Exception as e:
-                    print('Error', e)
+                    print('Error with data: ', e, msg)
+
                 # data["axes"] => array of floats
                 # data["buttons"] => array of { pressed: bool, value: float }
                 # do something with these to control motors
