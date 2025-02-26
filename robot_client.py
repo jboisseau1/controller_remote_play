@@ -69,7 +69,7 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
         # options={"framerate": "30", "video_size": "640x480"}
         # player = MediaPlayer("0:none", format="avfoundation", options=options) # MacOS camera feed
         # player = MediaPlayer("/dev/video0", format="v4l2", options=options) # Pi Cam feed
-        local_video = CameraStreamTrack(camera_index=camera_idx)
+        local_video = CameraStreamTrack()
         pc.addTrack(local_video)
 
         # Create a DataChannel for receiving commands
