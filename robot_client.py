@@ -150,7 +150,10 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
                 print("Unknown message:", msg)
 
 async def main():
-    await robot_main()
+    try:
+        await robot_main()
+    except Exception as e:
+        print("Error:", e)
 
 
 if __name__ == "__main__":
