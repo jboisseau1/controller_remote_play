@@ -21,7 +21,7 @@ class CameraStreamTrack(VideoStreamTrack):
         self.picam2 = Picamera2()
         # Create a video configuration.
         video_config = self.picam2.create_video_configuration(
-            main={"format": "RGB888", "size": (640, 480)}
+            main={"format": "RGB888"}
         )
         self.picam2.configure(video_config)
         self.picam2.start()
@@ -42,9 +42,8 @@ class CameraStreamTrack(VideoStreamTrack):
             video_frame = av.VideoFrame.from_ndarray(frame, format="rgb24")
             video_frame.pts = pts
             video_frame.time_base = time_base    
-            print("Successfully set time_base to None")
         except Exception as e:
-            print("Error setting time_base:", e)
+            print("Error:", e)
 
         return video_frame
 
