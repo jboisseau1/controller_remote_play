@@ -1,37 +1,34 @@
-// Adjust these to match your environment
-const SIGNALING_SERVER_URL = "ws://localhost:8765";
-const USER_ID = "user_123";
-const ROBOT_ID = "robot_123"; // Must match the robot's ID in robot_client.py
-
-// Minimal STUN config for NAT traversal (TURN is recommended for production)
+/**********************
+ * CONFIG + GLOBALS
+ **********************/
+const SIGNALING_SERVER_URL = "ws://localhost:8765"; // Adjust to your server
+const USER_ID = "user_123";                  // Arbitrary unique user ID
+const ROBOT_ID = "robot_123";                      // Must match your robot's ID
 const RTC_CONFIG = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
-let ws;
-let pc;
-let dataChannel;
+let ws;                 // WebSocket to signaling server
+let pc;                 // RTCPeerConnection
+let dataChannel;        // DataChannel for sending control commands
+let activeGamepadIndex; // Which gamepad index we're using
 
-/**
- * Initialize the WebSocket connection to the Python signaling server
- * and register as a user.
- */
+/**********************
+ * INIT WEBSOCKET
+ **********************/
 async function initWebSocket() {
   ws = new WebSocket(SIGNALING_SERVER_URL);
 
   ws.onopen = () => {
     console.log("[WS] Connected to signaling server.");
-    // Register as a user once connected
-    const registerMsg = {
-      type: "register_user",
-      user_id: USER_ID
-    };
+    // Register as user
+    const registerMsg = { type: "register_user", user_id: USER_ID };
     ws.send(JSON.stringify(registerMsg));
   };
 
   ws.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
-    console.log("[WS] Message from server:", msg);
+    console.log("[WS] Received:", msg);
 
     switch (msg.type) {
       case "user_registered":
@@ -48,13 +45,15 @@ async function initWebSocket() {
         break;
 
       case "ice_candidate":
-        // Robot is sending ICE candidates back
-        const candidate = new RTCIceCandidate({
-          candidate: msg.candidate,
-          sdpMid: msg.sdpMid,
-          sdpMLineIndex: msg.sdpMLineIndex
-        });
-        await pc.addIceCandidate(candidate);
+        // Robot is sending ICE candidates
+        if (msg.candidate) {
+          const candidate = new RTCIceCandidate({
+            candidate: msg.candidate,
+            sdpMid: msg.sdpMid,
+            sdpMLineIndex: msg.sdpMLineIndex
+          });
+          await pc.addIceCandidate(candidate);
+        }
         break;
 
       default:
@@ -62,34 +61,27 @@ async function initWebSocket() {
     }
   };
 
-  ws.onerror = (err) => {
-    console.error("[WS] Error:", err);
-  };
-
-  ws.onclose = () => {
-    console.log("[WS] Connection closed.");
-  };
+  ws.onerror = (err) => console.error("[WS] Error:", err);
+  ws.onclose = () => console.log("[WS] Connection closed.");
 }
 
-/**
- * Create the RTCPeerConnection, configure tracks/transceivers, and
- * set up event handlers (ICE, data channel, remote track).
- */
+/**********************
+ * CREATE PEER CONNECTION
+ **********************/
 async function createPeerConnection() {
   pc = new RTCPeerConnection(RTC_CONFIG);
 
-  // Create a data channel to send commands
+  // Create a data channel for sending gamepad inputs
   dataChannel = pc.createDataChannel("robotControl");
   dataChannel.onopen = () => {
     console.log("[DataChannel] Opened.");
-    // Example: automatically send a hello
-    // dataChannel.send("Hello Robot!");
   };
   dataChannel.onmessage = (event) => {
-    console.log("[DataChannel] Robot -> User message:", event.data);
+    console.log("[DataChannel] Robot -> User:", event.data);
   };
 
-  // Handle local ICE candidates (we forward them to the robot)
+  // When the robot sends us ICE candidates, we add them in onmessage above
+  // Here we forward our ICE candidates to the robot
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       const candidateMsg = {
@@ -104,40 +96,31 @@ async function createPeerConnection() {
     }
   };
 
-  // When the robot's video arrives, attach it to <video>
+  // Handle the remote track (robot video)
   pc.ontrack = (event) => {
-    console.log("[PeerConnection] ontrack =>", event.streams);
-    console.log(event.track)
+    console.log("[PeerConnection] ontrack => kind:", event.track.kind);
     if (event.track.kind === "video") {
-      const videoElement = document.getElementById("robotVideo");
-      if (videoElement) {
-        videoElement.srcObject = event.streams[0];
+      const videoElem = document.getElementById("robotVideo");
+      if (videoElem) {
+        videoElem.srcObject = event.streams[0];
       }
     }
   };
 
-  // Because we only want to receive video from the robot,
-  // we add a video transceiver in "recvonly" mode:
+  // Add a transceiver to receive the robot's video
   pc.addTransceiver("video", { direction: "recvonly" });
-
-  // If we wanted to share our own camera, we'd do it here, e.g.:
-  // const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  // for (const track of localStream.getTracks()) {
-  //   pc.addTrack(track, localStream);
-  // }
 }
 
-/**
- * Send an SDP offer to the robot.
- */
+/**********************
+ * CONNECT TO ROBOT
+ **********************/
 async function connectToRobot() {
   await createPeerConnection();
 
-  // Create offer
+  // Create an offer and send to the robot
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
 
-  // Send our offer SDP to the signaling server
   const offerMsg = {
     type: "offer",
     robot_id: ROBOT_ID,
@@ -145,34 +128,93 @@ async function connectToRobot() {
     sdp: pc.localDescription.sdp,
     sdp_type: pc.localDescription.type
   };
-  console.log(offerMsg)
   ws.send(JSON.stringify(offerMsg));
-  console.log("[Signaling] Offer sent to robot");
+  console.log("[Signaling] Sent offer to robot");
 }
 
-/**
- * Sends a test command (MOVE_FORWARD) over the DataChannel.
- */
-function sendMoveCommand() {
-  if (dataChannel && dataChannel.readyState === "open") {
-    dataChannel.send("MOVE_FORWARD");
-    console.log("[DataChannel] Sent MOVE_FORWARD");
-  } else {
-    console.warn("[DataChannel] Not open yet");
+/**********************
+ * GAMEPAD LOGIC
+ **********************/
+// Poll gamepad inputs and send them over the data channel
+function pollGamepads() {
+  const gamepads = navigator.getGamepads();
+  // If we don't have a chosen index, pick the first connected one
+  if (activeGamepadIndex == null) {
+    for (let i = 0; i < gamepads.length; i++) {
+      if (gamepads[i]) {
+        activeGamepadIndex = i;
+        console.log("Using gamepad index", i, "=>", gamepads[i].id);
+        break;
+      }
+    }
   }
+
+  if (activeGamepadIndex == null) {
+    // No gamepad found
+    document.getElementById("status").textContent = "No gamepad connected";
+    return;
+  }
+
+  const gp = gamepads[activeGamepadIndex];
+  if (!gp) {
+    // The previously active gamepad disconnected
+    activeGamepadIndex = null;
+    return;
+  }
+
+  // Build a JSON object with axes & buttons
+  const axes = gp.axes.map((val) => val.toFixed(2));
+  const buttons = gp.buttons.map((btn) => ({
+    pressed: btn.pressed,
+    value: btn.value.toFixed(2)
+  }));
+
+  const controllerState = {
+    timestamp: Date.now(),
+    axes,
+    buttons
+  };
+
+  // Send it over the data channel if it's open
+  if (dataChannel && dataChannel.readyState === "open") {
+    dataChannel.send(JSON.stringify(controllerState));
+  }
+
+  // Update the status div
+  const statusElem = document.getElementById("status");
+  statusElem.textContent = `Gamepad: ${gp.id}
+    | Axes: ${axes.join(", ")}
+    | Buttons: ${buttons.map((b, i) => `B${i}:${b.pressed}`).join(" ")}`;
 }
 
-// ---------------------------
-// Attach to buttons on page
-// ---------------------------
-window.onload = () => {
-  initWebSocket();
+// Continuously poll for gamepad data ~60 fps
+function updateLoop() {
+  pollGamepads();
+  requestAnimationFrame(updateLoop);
+}
 
+// Listen for connect/disconnect events
+window.addEventListener("gamepadconnected", (e) => {
+  console.log("[Gamepad] connected:", e.gamepad.index, e.gamepad.id);
+});
+window.addEventListener("gamepaddisconnected", (e) => {
+  console.log("[Gamepad] disconnected:", e.gamepad.index, e.gamepad.id);
+  if (e.gamepad.index === activeGamepadIndex) {
+    activeGamepadIndex = null;
+  }
+});
+
+/**********************
+ * ON LOAD
+ **********************/
+window.onload = async () => {
+  await initWebSocket();
+
+  // Start the gamepad polling loop
+  updateLoop();
+
+  // Hook up the Connect button
   document
     .getElementById("connectButton")
     .addEventListener("click", connectToRobot);
-
-  document
-    .getElementById("sendCommandButton")
-    .addEventListener("click", sendMoveCommand);
 };

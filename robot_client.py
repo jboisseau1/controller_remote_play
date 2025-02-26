@@ -83,10 +83,12 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
 
             @channel.on("message")
             def on_message(message):
-                # Handle commands from user
-                print(f"Received command: {message}")
-                # You can parse the message (e.g. JSON) and drive motors, etc.
-                # e.g. if message == 'MOVE_FORWARD': robot.go_forward()
+                data = json.loads(msg)
+                # data["axes"] => array of floats
+                # data["buttons"] => array of { pressed: bool, value: float }
+                # do something with these to control motors
+                print("Controller state:", data)
+
 
         @pc.on("icecandidate")
         async def on_icecandidate(candidate):
