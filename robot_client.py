@@ -7,7 +7,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from aiortc.contrib.media import MediaBlackhole, MediaRecorder, MediaPlayer
 from aiortc.contrib.signaling import BYE
 
-from av import VideoFrame
+import av
 
 from picamera2 import Picamera2
 
