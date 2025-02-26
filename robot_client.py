@@ -84,6 +84,7 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
             @channel.on("message")
             def on_message(message):
                 try:
+                    print(msg)
                     data = json.loads(msg)
                 except Exception as e:
                     print('Error', e)
