@@ -9,36 +9,43 @@ from aiortc.contrib.signaling import BYE
 
 from av import VideoFrame
 
+from picamera2 import Picamera2
+
+
 class CameraStreamTrack(VideoStreamTrack):
     """
     A video track that captures frames from OpenCV and yields them to WebRTC.
     """
-    def __init__(self, camera_index=0):
+    def __init__(self):
         super().__init__()
-        self.cap = cv2.VideoCapture(camera_index)
-        # Optionally set resolution and frame rate:
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
-    
+        self.picam2 = Picamera2()
+        # Create a video configuration.
+        video_config = self.picam2.create_video_configuration(
+            main={"format": "RGB888", "size": (640, 480)}
+        )
+        self.picam2.configure(video_config)
+        self.picam2.start()
+
     async def recv(self):
-        """
-        Grab a frame from the camera, convert it to an AV VideoFrame, and return it.
-        """
+        # Get the next available timestamp for this frame.
         pts, time_base = await self.next_timestamp()
-        ret, frame = self.cap.read()
-        if not ret:
-            raise Exception("Failed to read frame from camera")
-        # OpenCV uses BGR; convert to RGB:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
+
+        # Capture a frame as a numpy array (in RGB format as configured).
+        frame = self.picam2.capture_array()
+
+        # Optional: Process the frame with OpenCV (e.g., flipping, drawing, etc.)
+        # For example, to flip the frame horizontally:
+        # frame = cv2.flip(frame, 1)
+
+        # Wrap the numpy array into an AV VideoFrame.
+        video_frame = av.VideoFrame.from_ndarray(frame, format="rgb24")
         video_frame.pts = pts
         video_frame.time_base = time_base
         return video_frame
 
-    def release(self):
-        if self.cap is not None:
-            self.cap.release()
+    def stop(self):
+        self.picam2.stop()
+        super().stop()
 
 async def robot_main(robot_id="robot_123", camera_idx=0):
     # Step 1: connect to the signaling server
