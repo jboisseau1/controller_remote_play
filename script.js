@@ -101,6 +101,7 @@ async function createPeerConnection() {
     console.log("[PeerConnection] ontrack => kind:", event.track.kind);
     if (event.track.kind === "video") {
       const videoElem = document.getElementById("robotVideo");
+      console.log(event)
       if (videoElem) {
         videoElem.srcObject = event.streams[0];
       }
@@ -135,7 +136,10 @@ async function connectToRobot() {
 /**********************
  * GAMEPAD LOGIC
  **********************/
-// Poll gamepad inputs and send them over the data channel
+/**
+ * Poll gamepad inputs at a fixed interval.
+ * This approach avoids blocking the main thread with a tight loop.
+ */
 function pollGamepads() {
   const gamepads = navigator.getGamepads();
   // If we don't have a chosen index, pick the first connected one
@@ -150,14 +154,14 @@ function pollGamepads() {
   }
 
   if (activeGamepadIndex == null) {
-    // No gamepad found
+    // No gamepad detected
     document.getElementById("status").textContent = "No gamepad connected";
     return;
   }
 
   const gp = gamepads[activeGamepadIndex];
   if (!gp) {
-    // The previously active gamepad disconnected
+    // The previously active gamepad is disconnected
     activeGamepadIndex = null;
     return;
   }
@@ -175,8 +179,9 @@ function pollGamepads() {
     buttons
   };
 
-  // Send it over the data channel if it's open
+  // Send it over the data channel if open
   if (dataChannel && dataChannel.readyState === "open") {
+    console.log(dataChannel)
     dataChannel.send(JSON.stringify(controllerState));
   }
 
@@ -187,10 +192,13 @@ function pollGamepads() {
     | Buttons: ${buttons.map((b, i) => `B${i}:${b.pressed}`).join(" ")}`;
 }
 
-// Continuously poll for gamepad data ~60 fps
-function updateLoop() {
-  pollGamepads();
-  requestAnimationFrame(updateLoop);
+/**
+ * Start polling for gamepad input every 50ms (20 times/sec).
+ */
+function startGamepadPolling() {
+  setInterval(() => {
+    pollGamepads();
+  }, 50);
 }
 
 // Listen for connect/disconnect events
@@ -204,16 +212,14 @@ window.addEventListener("gamepaddisconnected", (e) => {
   }
 });
 
-/**********************
- * ON LOAD
- **********************/
 window.onload = async () => {
+  // 1) Connect to signaling server
   await initWebSocket();
 
-  // Start the gamepad polling loop
-  updateLoop();
+  // 2) Start non-blocking gamepad polling
+  startGamepadPolling();
 
-  // Hook up the Connect button
+  // 3) Hook up "Connect" button to start WebRTC negotiation
   document
     .getElementById("connectButton")
     .addEventListener("click", connectToRobot);
