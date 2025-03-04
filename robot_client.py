@@ -11,6 +11,8 @@ import av
 
 from picamera2 import Picamera2
 
+from sbus_module import SBusTransmitter
+
 
 class CameraStreamTrack(VideoStreamTrack):
     """
@@ -52,6 +54,10 @@ class CameraStreamTrack(VideoStreamTrack):
         super().stop()
 
 async def robot_main(robot_id="robot_123", camera_idx=0):
+    # Initialize the SBUS transmitter.
+    sbus_tx = SBusTransmitter(port='/dev/serial0')
+    sbus_tx.start()  # Starts the background thread for SBUS transmission.
+
     # Step 1: connect to the signaling server
     uri = "ws://192.168.1.196:8765"
     async with websockets.connect(uri) as ws:
@@ -82,15 +88,24 @@ async def robot_main(robot_id="robot_123", camera_idx=0):
             print("Data channel created by remote peer:", channel.label)
             @channel.on("message")
             def on_message(message):
-                try:
-                    data = json.loads(message)
-                    print("Controller state:", data)
-                except Exception as e:
-                    print('Error with data: ', e, message)
-
                 # data["axes"] => array of floats
                 # data["buttons"] => array of { pressed: bool, value: float }
                 # do something with these to control motors
+                try:
+                    data = json.loads(message)
+                    print("Controller state: R,P,T,Y", data.get("axes"))
+                    sbus_tx.update_gamepad({
+                        'roll': data.get("axes")[0],
+                        'pitch': data.get("axes")[1],
+                        'yaw': data.get("axes")[3],
+                        'throttle': data.get("axes")[2]
+                    })
+
+                except Exception as e:
+                    print('Error with data: ', e, message)
+                finally:
+                    sbus_tx.stop()
+
 
 
         @pc.on("icecandidate")
