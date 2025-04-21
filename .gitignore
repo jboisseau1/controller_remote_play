@@ -172,3 +172,8 @@ cython_debug/
 
 # Mac system files
 .DS_Store
+
+
+local.*
+*/local.*
+.temp

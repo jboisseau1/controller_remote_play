@@ -1,3 +1,0 @@
-aiortc
-opencv-python   # or whatever is current
-websockets         # for signaling over websockets
