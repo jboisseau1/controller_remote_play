@@ -51,7 +51,7 @@ connectBtn.onclick = async () => {
 testBtn.onclick = async () => {
     if (piDC?.readyState === 'open') {
         let gpState = JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 })
-        let payload = { command: 0, message: ""}
+        let payload = { command: 1, message: ""}
         console.log(`Sending message`)
         let message = generateRTCmessage(2, JSON.stringify(payload))
         piDC.send(message)
