@@ -9,6 +9,7 @@ const testBtn = document.getElementById('test');
 const logEl      = document.getElementById('log');
 const axesEl     = document.getElementById('gp-axes');
 const buttonsEl  = document.getElementById('gp-buttons');
+const RC_COMM_CHANNEL = 6
 
 let conn;        // PiCamera instance
 let piDC;        // default data‑channel
@@ -28,7 +29,7 @@ connectBtn.onclick = async () => {
 // send data channel test message
 testBtn.onclick = async () => {
     if (piDC?.readyState === 'open') {
-        let gpState = generateRTCmessage("RC", JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 }))
+        let gpState = generateRTCmessage(6, JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 }))
         piDC.send(gpState)
     }
 }
@@ -36,7 +37,6 @@ testBtn.onclick = async () => {
 // Start WebRTC & MQTT signalling
 function startConnection(cfg) {
   conn = new PiCamera(cfg);
-  console.log(conn)
   conn.onStream = stream => {
     vid.srcObject = stream ?? null;
     log('Video stream attached');
@@ -44,9 +44,13 @@ function startConnection(cfg) {
 
   conn.onDatachannel = dc => {
     piDC = dc;
-    console.log(dc)
     log(`Data‑channel open (label=${dc.label}, id=${dc.id})`);
   };
+
+  conn.onMetadata = metadata => {
+    log(`Telemitry data feed up`)
+    console.log(metadata)
+  }
 
   conn.onConnectionState = state => {
     log(`Peer state ➜ ${state}`);
@@ -59,7 +63,6 @@ function startConnection(cfg) {
   conn.connect();
 }
 
-// look for a pad that was plugged in early
 function pollExistingGamepad() {
   const gps = navigator.getGamepads();
   for (let i = 0; i < gps.length; i++) {
@@ -75,8 +78,6 @@ function generateRTCmessage(type, message){
     let payload = {}
     payload.type = type;
     payload.message = typeof message === 'string' ? message : String(message)
-
-    console.log(payload)
     return JSON.stringify(payload)
 }
 
@@ -108,9 +109,10 @@ function startGamepadPolling(index) {
 
     // send to Pi
     if (piDC?.readyState === 'open') {
-        log(JSON.stringify({ type:'gamepad', axes, buttons, timestamp: gp.timestamp }))
-
-    //  piDC.send(JSON.stringify({ type:'gamepad', axes, buttons, timestamp: gp.timestamp }));
+        let gpState = generateRTCmessage(RC_COMM_CHANNEL, JSON.stringify({ type:'gamepad', axes, buttons, timestamp: gp.timestamp }))
+        // log(gpState)
+        piDC.send(gpState)
+    
     }
   }, 100);
 }
