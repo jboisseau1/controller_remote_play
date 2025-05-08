@@ -177,3 +177,5 @@ cython_debug/
 local.*
 */local.*
 .temp
+
+node_modules/
