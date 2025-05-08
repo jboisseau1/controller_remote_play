@@ -28,9 +28,8 @@ connectBtn.onclick = async () => {
 // send data channel test message
 testBtn.onclick = async () => {
     if (piDC?.readyState === 'open') {
-        log(JSON.stringify({ type:'gamepad' }))
-
-     piDC.send(0);
+        let gpState = generateRTCmessage("RC", JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 }))
+        piDC.send(gpState)
     }
 }
 
@@ -70,6 +69,15 @@ function pollExistingGamepad() {
       break;
     }
   }
+}
+
+function generateRTCmessage(type, message){
+    let payload = {}
+    payload.type = type;
+    payload.message = typeof message === 'string' ? message : String(message)
+
+    console.log(payload)
+    return JSON.stringify(payload)
 }
 
 // Listen for plug/unplug
