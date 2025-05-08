@@ -1,5 +1,6 @@
 // app.js — PiCamera + Gamepad demo
 import { PiCamera } from 'https://cdn.jsdelivr.net/npm/picamera.js/+esm';
+// import { pid } from 'process';
 
 // DOM refs
 const vid        = document.getElementById('vid');
