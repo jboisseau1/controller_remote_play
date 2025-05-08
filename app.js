@@ -10,7 +10,14 @@ const testBtn = document.getElementById('test');
 const logEl      = document.getElementById('log');
 const axesEl     = document.getElementById('gp-axes');
 const buttonsEl  = document.getElementById('gp-buttons');
+
 const RC_COMM_CHANNEL = 6
+
+const overlay = document.getElementById('overlay');
+const ctx     = overlay.getContext('2d');
+const speedEl = document.getElementById('tele-speed');
+const directionEl  = document.getElementById('tele-direction');
+const telemetry = { speed: 0, direction: "N" };
 
 let conn;        // PiCamera instance
 let piDC;        // default data‑channel
@@ -21,6 +28,19 @@ const log = m => {
   logEl.scrollTop = logEl.scrollHeight;
 };
 
+function drawOverlay() {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    ctx.font      = '24px sans-serif';
+    ctx.fillStyle = 'yellow';
+    ctx.textBaseline = 'top';
+  
+    ctx.fillText(`Speed: ${telemetry.speed} m/s`, 10, 10);
+    ctx.fillText(`direction:  ${telemetry.direction}`, 10, 40);
+  
+    requestAnimationFrame(drawOverlay);
+  }
+  
+
 // Connect button
 connectBtn.onclick = async () => {
   connectBtn.disabled = true;
@@ -29,6 +49,7 @@ connectBtn.onclick = async () => {
 };
 // send data channel test message
 testBtn.onclick = async () => {
+    console.log(piDC)
     if (piDC?.readyState === 'open') {
         let gpState = generateRTCmessage(6, JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 }))
         piDC.send(gpState)
@@ -41,6 +62,7 @@ function startConnection(cfg) {
   conn.onStream = stream => {
     vid.srcObject = stream ?? null;
     log('Video stream attached');
+    drawOverlay()
   };
 
   conn.onDatachannel = dc => {
@@ -51,6 +73,17 @@ function startConnection(cfg) {
   conn.onMetadata = metadata => {
     log(`Telemitry data feed up`)
     console.log(metadata)
+    let msg;
+    try { msg = JSON.parse(metadata.data); }
+    catch (err) { return; }
+
+    if (msg.type === 'telemetry') {
+        telemetry.speed = msg.speed;
+        telemetry.direction  = msg.direction;
+
+        speedEl.textContent = telemetry.speed;
+        directionEl.textContent  = telemetry.direction;
+    }
   }
 
   conn.onConnectionState = state => {
@@ -81,6 +114,11 @@ function generateRTCmessage(type, message){
     payload.message = typeof message === 'string' ? message : String(message)
     return JSON.stringify(payload)
 }
+
+vid.addEventListener('loadedmetadata', () => {
+    overlay.width  = vid.videoWidth;
+    overlay.height = vid.videoHeight;
+  });
 
 // Listen for plug/unplug
 window.addEventListener('gamepadconnected', e => {

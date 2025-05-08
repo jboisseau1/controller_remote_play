@@ -12,12 +12,24 @@
 </head>
 <body>
   <h2>Live feed</h2>
-  <video id="vid" playsinline autoplay muted></video>
+  <figure style="position: relative; display: inline-block;">
+    <video id="vid" playsinline autoplay muted
+           style="display: block;"></video>
+    <!-- canvas sits on top of the video -->
+    <canvas id="overlay"
+            style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+  </figure>
+  
+  <!-- <section id="telemetry-panel">
+    <h3>Telemetry</h3>
+    <div>Speed: <span id="tele-speed">–</span></div>
+    <div>Temp:  <span id="tele-temp">–</span></div>
+  </section> -->
 
   <h3>Controls</h3>
   <button id="connect">Connect</button>
   <button id="test">send dc</button>
-  <!-- new gamepad status panel -->
+  <!-- gamepad status panel -->
   <section id="gamepad-status">
     <h3>Gamepad Status</h3>
     <div><strong>Axes:</strong> <span id="gp-axes">–</span></div>
