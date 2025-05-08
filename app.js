@@ -35,7 +35,7 @@ function drawOverlay() {
     ctx.textBaseline = 'top';
   
     ctx.fillText(`Speed: ${telemetry.speed} m/s`, 10, 10);
-    ctx.fillText(`direction:  ${telemetry.direction}`, 10, 40);
+    ctx.fillText(`Direction:  ${telemetry.direction}`, 10, 40);
   
     requestAnimationFrame(drawOverlay);
   }
@@ -49,10 +49,12 @@ connectBtn.onclick = async () => {
 };
 // send data channel test message
 testBtn.onclick = async () => {
-    console.log(piDC)
     if (piDC?.readyState === 'open') {
-        let gpState = generateRTCmessage(6, JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 }))
-        piDC.send(gpState)
+        let gpState = JSON.stringify({ type:'gamepad', axes:[], buttons:[], timestamp: 12345 })
+        let payload = { command: 0, message: ""}
+        console.log(`Sending message`)
+        let message = generateRTCmessage(2, JSON.stringify(payload))
+        piDC.send(message)
     }
 }
 
@@ -68,6 +70,12 @@ function startConnection(cfg) {
   conn.onDatachannel = dc => {
     piDC = dc;
     log(`Data‑channel open (label=${dc.label}, id=${dc.id})`);
+    piDC.onmessage = message => {
+        console.log(message)
+        try { msg = JSON.parse(message.data); }
+        catch (err) { return; }
+    }
+      
   };
 
   conn.onMetadata = metadata => {
