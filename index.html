@@ -3,77 +3,39 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>PiCamera.js WebRTC + Gamepad</title>
+    <title>PiCamera Stream</title>
     <style>
-        #video-container {
-            position: relative;
-            width: 640px;
-            height: 480px;
-            border: 1px solid #ddd;
-            overflow: hidden;
-        }
-
-        #video-container video,
-        #video-container canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            /* or “contain” if you’d rather letterbox */
-            /* pointer-events: none;   keep if you don’t want clicks blocked by canvas */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: start;
+            height: 100vh;
         }
 
         video {
-            max-width: 100%;
-            border: 1px solid #ddd;
+            width: 100%;
+            height: auto;
+            max-height: calc(100vh - 50px);
+            display: block;
+            object-fit: contain;
+            background: black;
         }
 
-        #log {
-            background: #111;
-            color: #0f0;
-            padding: .5rem;
-            height: 150px;
-            overflow-y: auto;
-        }
-
-        #gamepad-status {
-            margin: 1rem 0;
-        }
-
-        #gamepad-status div {
-            margin-bottom: 0.25rem;
+        #connect {
+            margin: 1rem;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
         }
     </style>
 </head>
 
 <body>
-    <h2>Live feed</h2>
-    <figure id="video-container">
-        <video id="vid" playsinline autoplay muted style="display: block;"></video>
-        <!-- canvas sits on top of the video -->
-        <canvas id="overlay" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
-    </figure>
-
-    <!-- <section id="telemetry-panel">
-    <h3>Telemetry</h3>
-    <div>Speed: <span id="tele-speed">–</span></div>
-    <div>Temp:  <span id="tele-temp">–</span></div>
-  </section> -->
-
-    <h3>Controls</h3>
     <button id="connect">Connect</button>
-    <button id="test">send dc</button>
-    <!-- gamepad status panel -->
-    <section id="gamepad-status">
-        <h3>Gamepad Status</h3>
-        <div><strong>Axes:</strong> <span id="gp-axes">–</span></div>
-        <div><strong>Buttons:</strong> <span id="gp-buttons">–</span></div>
-    </section>
-
-    <h3>Log</h3>
-    <pre id="log"></pre>
+    <video id="vid" playsinline autoplay muted></video>
 
     <script type="module" src="app.js"></script>
 </body>
